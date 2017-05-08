@@ -10,15 +10,16 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JTable;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.table.DefaultTableModel;
 import org.pcap4j.core.PacketListener;
 import org.pcap4j.core.PcapHandle;
 import org.pcap4j.core.Pcaps;
 import org.pcap4j.core.PcapNetworkInterface;
-import org.pcap4j.packet.IpV4Packet;
 import org.pcap4j.packet.Packet;
+import org.pcap4j.packet.IpV4Packet;
 import org.pcap4j.packet.TcpPacket;
 import org.pcap4j.packet.UdpPacket;
 import org.pcap4j.packet.EthernetPacket;
@@ -27,10 +28,10 @@ public class NetworkSquzz {
 	boolean start = true;
 	JComboBox<String> comboBox = new JComboBox<String>();
 	DefaultComboBoxModel<String> def=new DefaultComboBoxModel<String>();
+	DefaultTableModel deftable=new DefaultTableModel();
 	private JFrame frmNetworksquzz;
-	int count;
+	int count,count2;
 	JLabel lblReceive = new JLabel("Receive:");
-	JTextArea textArea = new JTextArea();
 	public static String bytesToHex(byte[] bytes) {
 	    final char[] hexArray = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 	    char[] hexChars = new char[bytes.length * 2];
@@ -49,31 +50,37 @@ public class NetworkSquzz {
 			if(arg0 != null){
 				IpV4Packet ipv4=arg0.get(IpV4Packet.class);
 				IpV4Packet.IpV4Header ipv4header=ipv4.getHeader();
+				count2 = count2 + 1;
 			    if(arg0.contains(TcpPacket.class)){
 				   TcpPacket tcp=arg0.get(TcpPacket.class);
 				   TcpPacket.TcpHeader tcpheader=tcp.getHeader();
-				   textArea.append("TCP "+ipv4header.getSrcAddr().getHostAddress()+":"+tcpheader.getSrcPort().valueAsString()+
-						   " -> "+ipv4header.getDstAddr().getHostAddress()+":"+tcpheader.getDstPort().valueAsString()+" Data: "+
-						   bytesToHex(tcp.getRawData())+"\r\n");
+				   String[] row={String.valueOf(count2),"TCP",ipv4header.getSrcAddr().getHostAddress()+":"+tcpheader.getSrcPort().valueAsString()
+						   ,ipv4header.getDstAddr().getHostAddress()+":"+tcpheader.getDstPort().valueAsString(),
+						   bytesToHex(tcp.getRawData())};
+				   deftable.addRow(row);
 			    }else if(arg0.contains(UdpPacket.class)){
 			    	UdpPacket udp=arg0.get(UdpPacket.class);
 					UdpPacket.UdpHeader udpheader=udp.getHeader();
-					textArea.append("UDP "+ipv4header.getSrcAddr().getHostAddress()+":"+udpheader.getSrcPort().valueAsString()+
-						   " -> "+ipv4header.getDstAddr().getHostAddress()+":"+udpheader.getDstPort().valueAsString()+" Data: "+
-						   bytesToHex(udp.getRawData())+"\r\n");
+					String[] row={String.valueOf(count2),"UDP",ipv4header.getSrcAddr().getHostAddress()+":"+udpheader.getSrcPort().valueAsString()
+							   ,ipv4header.getDstAddr().getHostAddress()+":"+udpheader.getDstPort().valueAsString(),
+							   bytesToHex(udp.getRawData())};
+				    deftable.addRow(row);
 			    }else if(arg0.contains(EthernetPacket.class)){
 			    	EthernetPacket eth=arg0.get(EthernetPacket.class);
 			    	EthernetPacket.EthernetHeader ethheader=eth.getHeader();
-					textArea.append("ETH "+ethheader.getSrcAddr().toString()+
-						   " -> "+ethheader.getDstAddr().toString()+" Data: "+
-						   bytesToHex(eth.getRawData())+"\r\n");
+			    	String[] row={String.valueOf(count2),"ETH",ethheader.getSrcAddr().toString()
+						   ,ethheader.getDstAddr().toString(),
+						   bytesToHex(eth.getRawData())};
+				    deftable.addRow(row);
 			    }else if(arg0.contains(ArpPacket.class)){
 			    	ArpPacket arp=arg0.get(ArpPacket.class);
 			        ArpPacket.ArpHeader arpheader=arp.getHeader();
-					textArea.append("ARP "+arpheader.getSrcProtocolAddr().getHostAddress()+":"+arpheader.getSrcHardwareAddr().toString()+
-						   " -> "+arpheader.getDstProtocolAddr().getHostAddress()+":"+arpheader.getDstHardwareAddr().toString()+" Data: "+
-						   bytesToHex(arp.getRawData())+"\r\n");
+			    	String[] row={String.valueOf(count2),"ARP",arpheader.getSrcHardwareAddr().toString()
+							   ,arpheader.getDstHardwareAddr().toString(),
+							   bytesToHex(arp.getRawData())};
+				    deftable.addRow(row);
 			    }
+			    
 			}
 		}
 	};
@@ -127,13 +134,14 @@ public class NetworkSquzz {
 		networkshow();
 	}
     Thread th;
+    private JTable table;
 	/**
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
 		frmNetworksquzz = new JFrame();
 		frmNetworksquzz.setTitle("NetworkSquzz");
-		frmNetworksquzz.setBounds(100, 100, 1058, 704);
+		frmNetworksquzz.setBounds(100, 100, 1311, 704);
 		frmNetworksquzz.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		JLabel lblAdapter = new JLabel("Adapter:");
@@ -157,21 +165,12 @@ public class NetworkSquzz {
 				}else{
 					btnStart.setText("Start");
 					th.interrupt();
-					count = 0;
-					lblReceive.setText("Receive: ");
 					start = true;
 				}
 			}
 		});
 		
 		JScrollPane scrollPane = new JScrollPane();
-		
-		JButton btnClear = new JButton("Clear");
-		btnClear.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				textArea.setText("");
-			}
-		});
 		
 		lblReceive.setFont(new Font("Arial", Font.PLAIN, 14));
 		GroupLayout groupLayout = new GroupLayout(frmNetworksquzz.getContentPane());
@@ -180,17 +179,15 @@ public class NetworkSquzz {
 				.addGroup(groupLayout.createSequentialGroup()
 					.addContainerGap()
 					.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-						.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 1022, Short.MAX_VALUE)
+						.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 1275, Short.MAX_VALUE)
 						.addGroup(groupLayout.createSequentialGroup()
 							.addComponent(lblAdapter)
 							.addPreferredGap(ComponentPlacement.RELATED)
-							.addComponent(comboBox, GroupLayout.PREFERRED_SIZE, 675, GroupLayout.PREFERRED_SIZE)
-							.addPreferredGap(ComponentPlacement.RELATED)
-							.addComponent(btnReload, GroupLayout.PREFERRED_SIZE, 96, GroupLayout.PREFERRED_SIZE)
+							.addComponent(comboBox, 0, 890, Short.MAX_VALUE)
 							.addGap(18)
-							.addComponent(btnClear)
+							.addComponent(btnReload, GroupLayout.PREFERRED_SIZE, 155, GroupLayout.PREFERRED_SIZE)
 							.addGap(18)
-							.addComponent(btnStart, GroupLayout.DEFAULT_SIZE, 94, Short.MAX_VALUE))
+							.addComponent(btnStart, GroupLayout.PREFERRED_SIZE, 136, GroupLayout.PREFERRED_SIZE))
 						.addComponent(lblReceive))
 					.addContainerGap())
 		);
@@ -202,18 +199,29 @@ public class NetworkSquzz {
 						.addComponent(lblAdapter)
 						.addComponent(comboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 						.addComponent(btnStart)
-						.addComponent(btnReload)
-						.addComponent(btnClear))
-					.addPreferredGap(ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+						.addComponent(btnReload))
+					.addPreferredGap(ComponentPlacement.RELATED, 19, Short.MAX_VALUE)
 					.addComponent(lblReceive)
 					.addPreferredGap(ComponentPlacement.UNRELATED)
 					.addComponent(scrollPane, GroupLayout.PREFERRED_SIZE, 565, GroupLayout.PREFERRED_SIZE)
 					.addContainerGap())
 		);
-		textArea.setEditable(false);
-		textArea.setFont(new Font("Monospaced", Font.PLAIN, 16));
-		
-		scrollPane.setViewportView(textArea);
+		deftable.addColumn("No.");
+		deftable.addColumn("Protocol");
+		deftable.addColumn("Src");
+		deftable.addColumn("Dst");
+		deftable.addColumn("Data");
+		table = new JTable();
+		table.setModel(deftable);
+		table.getColumnModel().getColumn(0).setPreferredWidth(10);
+		table.getColumnModel().getColumn(1).setPreferredWidth(10);
+		table.getColumnModel().getColumn(2).setPreferredWidth(50);
+		table.getColumnModel().getColumn(3).setPreferredWidth(50);
+		table.getColumnModel().getColumn(4).setPreferredWidth(400);
+		table.setFillsViewportHeight(true);
+		table.setSurrendersFocusOnKeystroke(true);
+		table.setEnabled(false);
+		scrollPane.setViewportView(table);
 		frmNetworksquzz.getContentPane().setLayout(groupLayout);
 	}
 }
