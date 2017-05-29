@@ -1,5 +1,6 @@
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
@@ -30,6 +31,7 @@ public class NetworkSquzz {
 	DefaultComboBoxModel<String> def=new DefaultComboBoxModel<String>();
 	DefaultTableModel deftable=new DefaultTableModel();
 	private JFrame frmNetworksquzz;
+	JScrollPane scrollPane = new JScrollPane();
 	int count,count2;
 	JLabel lblReceive = new JLabel("Receive:");
 	public static String bytesToHex(byte[] bytes) {
@@ -65,6 +67,13 @@ public class NetworkSquzz {
 							   ,ipv4header.getDstAddr().getHostAddress()+":"+udpheader.getDstPort().valueAsString(),
 							   bytesToHex(udp.getRawData())};
 				    deftable.addRow(row);
+			    }else if(arg0.contains(ArpPacket.class)){
+				    	ArpPacket arp=arg0.get(ArpPacket.class);
+				        ArpPacket.ArpHeader arpheader=arp.getHeader();
+				    	String[] row={String.valueOf(count2),"ARP",arpheader.getSrcHardwareAddr().toString()
+								   ,arpheader.getDstHardwareAddr().toString(),
+								   bytesToHex(arp.getRawData())};
+					    deftable.addRow(row);
 			    }else if(arg0.contains(EthernetPacket.class)){
 			    	EthernetPacket eth=arg0.get(EthernetPacket.class);
 			    	EthernetPacket.EthernetHeader ethheader=eth.getHeader();
@@ -72,15 +81,12 @@ public class NetworkSquzz {
 						   ,ethheader.getDstAddr().toString(),
 						   bytesToHex(eth.getRawData())};
 				    deftable.addRow(row);
-			    }else if(arg0.contains(ArpPacket.class)){
-			    	ArpPacket arp=arg0.get(ArpPacket.class);
-			        ArpPacket.ArpHeader arpheader=arp.getHeader();
-			    	String[] row={String.valueOf(count2),"ARP",arpheader.getSrcHardwareAddr().toString()
-							   ,arpheader.getDstHardwareAddr().toString(),
-							   bytesToHex(arp.getRawData())};
-				    deftable.addRow(row);
-			    }
-			    
+			    } 
+			    int rowCount=table.getRowCount();
+			    table.getSelectionModel().setSelectionInterval(rowCount-1,rowCount-1);
+			    Rectangle rect=table.getCellRect(rowCount-1,0,true);
+			    table.updateUI();
+			    table.scrollRectToVisible(rect);
 			}
 		}
 	};
@@ -92,9 +98,9 @@ public class NetworkSquzz {
 				try{
 					PcapNetworkInterface pcapnet=Pcaps.getDevByName(comboBox.getSelectedItem().toString());
 					PcapHandle pcaphand=pcapnet.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 0);
-					count = count + 1;
 					lblReceive.setText("Receive: "+count);
 					pcaphand.loop(10, packetget);
+					count = count + 1;
 					Thread.sleep(100);
 				}catch(Exception e){}
 			}
@@ -159,18 +165,18 @@ public class NetworkSquzz {
 			public void actionPerformed(ActionEvent e) {
 				if(start == true){
 					btnStart.setText("Stop");
-					start = false;
 					th=new Thread(pcaps);
 					th.start();
+					start = false;
 				}else{
 					btnStart.setText("Start");
 					th.interrupt();
+					count = 0;
 					start = true;
 				}
 			}
 		});
 		
-		JScrollPane scrollPane = new JScrollPane();
 		
 		lblReceive.setFont(new Font("Arial", Font.PLAIN, 14));
 		GroupLayout groupLayout = new GroupLayout(frmNetworksquzz.getContentPane());
